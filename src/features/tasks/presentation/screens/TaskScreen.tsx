@@ -2,11 +2,19 @@ import React from 'react';
 import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { Task } from '../../domain/models/Task';
+import {
+  PRIORITY_FILTER_OPTIONS,
+  PriorityFilter,
+} from '../components/PriorityFilter';
 import { useTaskViewModel } from '../viewmodels/TaskViewModel';
 
 function TaskItem({ task, onToggle }: { task: Task; onToggle: () => void }) {
   return (
-    <Pressable style={styles.task} onPress={onToggle}>
+    <Pressable
+      testID={`task-item-${task.id}`}
+      style={styles.task}
+      onPress={onToggle}
+    >
       <View style={styles.taskInfo}>
         <Text style={[styles.taskTitle, task.isCompleted && styles.completed]}>
           {task.title}
@@ -25,7 +33,17 @@ function TaskItem({ task, onToggle }: { task: Task; onToggle: () => void }) {
 }
 
 export default function TaskScreen() {
-  const { tasks, toggleTaskCompletion } = useTaskViewModel();
+  const { tasks, selectedFilter, setSelectedFilter, toggleTaskCompletion } =
+    useTaskViewModel();
+
+  const selectedLabel = PRIORITY_FILTER_OPTIONS.find(
+    option => option.value === selectedFilter,
+  )?.label;
+
+  const emptyMessage =
+    selectedFilter === 'all'
+      ? 'No tasks yet.'
+      : `No ${selectedLabel} priority tasks found.`;
 
   return (
     <View style={styles.container}>
@@ -34,6 +52,11 @@ export default function TaskScreen() {
       <Text style={styles.subtitle}>
         Tap a task to change its completion status.
       </Text>
+
+      <PriorityFilter
+        selectedFilter={selectedFilter}
+        onSelectFilter={setSelectedFilter}
+      />
 
       <FlatList
         data={tasks}
@@ -44,6 +67,11 @@ export default function TaskScreen() {
             onToggle={() => toggleTaskCompletion(item.id)}
           />
         )}
+        ListEmptyComponent={
+          <Text testID="task-list-empty" style={styles.emptyState}>
+            {emptyMessage}
+          </Text>
+        }
       />
     </View>
   );
@@ -89,6 +117,11 @@ const styles = StyleSheet.create({
   priority: {
     marginTop: 6,
     fontSize: 12,
+    color: '#64748B',
+  },
+  emptyState: {
+    marginTop: 32,
+    textAlign: 'center',
     color: '#64748B',
   },
   status: {

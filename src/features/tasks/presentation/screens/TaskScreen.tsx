@@ -2,11 +2,22 @@ import React from 'react';
 import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { Task } from '../../domain/models/Task';
-import { useTaskViewModel } from '../viewmodels/TaskViewModel';
+import { taskFilters, useTaskViewModel } from '../viewmodels/TaskViewModel';
+
+const filterLabels = {
+  all: 'All',
+  high: 'High',
+  medium: 'Medium',
+  low: 'Low',
+};
 
 function TaskItem({ task, onToggle }: { task: Task; onToggle: () => void }) {
   return (
-    <Pressable style={styles.task} onPress={onToggle}>
+    <Pressable
+      testID={`task-${task.id}`}
+      style={styles.task}
+      onPress={onToggle}
+    >
       <View style={styles.taskInfo}>
         <Text style={[styles.taskTitle, task.isCompleted && styles.completed]}>
           {task.title}
@@ -25,7 +36,8 @@ function TaskItem({ task, onToggle }: { task: Task; onToggle: () => void }) {
 }
 
 export default function TaskScreen() {
-  const { tasks, toggleTaskCompletion } = useTaskViewModel();
+  const { tasks, selectedFilter, setSelectedFilter, toggleTaskCompletion } =
+    useTaskViewModel();
 
   return (
     <View style={styles.container}>
@@ -35,9 +47,43 @@ export default function TaskScreen() {
         Tap a task to change its completion status.
       </Text>
 
+      <View style={styles.filters}>
+        {taskFilters.map(filter => {
+          const isSelected = filter === selectedFilter;
+          return (
+            <Pressable
+              key={filter}
+              testID={`filter-${filter}`}
+              accessibilityRole="button"
+              accessibilityState={{ selected: isSelected }}
+              style={[styles.filter, isSelected && styles.filterSelected]}
+              onPress={() => setSelectedFilter(filter)}
+            >
+              <Text
+                style={[
+                  styles.filterText,
+                  isSelected && styles.filterTextSelected,
+                ]}
+              >
+                {filterLabels[filter]}
+              </Text>
+            </Pressable>
+          );
+        })}
+      </View>
+
       <FlatList
         data={tasks}
         keyExtractor={item => item.id}
+        ListEmptyComponent={
+          <Text testID="empty-state" style={styles.empty}>
+            {selectedFilter === 'all'
+              ? 'No tasks yet.'
+              : `No ${filterLabels[
+                  selectedFilter
+                ].toLowerCase()} priority tasks.`}
+          </Text>
+        }
         renderItem={({ item }) => (
           <TaskItem
             task={item}
@@ -63,6 +109,33 @@ const styles = StyleSheet.create({
   subtitle: {
     marginTop: 6,
     marginBottom: 20,
+    color: '#64748B',
+  },
+  filters: {
+    flexDirection: 'row',
+    marginBottom: 16,
+  },
+  filter: {
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+    marginRight: 8,
+    borderRadius: 16,
+    backgroundColor: '#E2E8F0',
+  },
+  filterSelected: {
+    backgroundColor: '#2563EB',
+  },
+  filterText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#334155',
+  },
+  filterTextSelected: {
+    color: '#FFFFFF',
+  },
+  empty: {
+    marginTop: 40,
+    textAlign: 'center',
     color: '#64748B',
   },
   task: {

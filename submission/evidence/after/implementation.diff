@@ -1,0 +1,118 @@
+diff --git a/src/features/tasks/presentation/screens/TaskScreen.tsx b/src/features/tasks/presentation/screens/TaskScreen.tsx
+index 6f04c72..1d27070 100644
+--- a/src/features/tasks/presentation/screens/TaskScreen.tsx
++++ b/src/features/tasks/presentation/screens/TaskScreen.tsx
+@@ -2,11 +2,19 @@ import React from 'react';
+ import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+ 
+ import { Task } from '../../domain/models/Task';
++import {
++  PRIORITY_FILTER_OPTIONS,
++  PriorityFilter,
++} from '../components/PriorityFilter';
+ import { useTaskViewModel } from '../viewmodels/TaskViewModel';
+ 
+ function TaskItem({ task, onToggle }: { task: Task; onToggle: () => void }) {
+   return (
+-    <Pressable style={styles.task} onPress={onToggle}>
++    <Pressable
++      testID={`task-item-${task.id}`}
++      style={styles.task}
++      onPress={onToggle}
++    >
+       <View style={styles.taskInfo}>
+         <Text style={[styles.taskTitle, task.isCompleted && styles.completed]}>
+           {task.title}
+@@ -25,7 +33,17 @@ function TaskItem({ task, onToggle }: { task: Task; onToggle: () => void }) {
+ }
+ 
+ export default function TaskScreen() {
+-  const { tasks, toggleTaskCompletion } = useTaskViewModel();
++  const { tasks, selectedFilter, setSelectedFilter, toggleTaskCompletion } =
++    useTaskViewModel();
++
++  const selectedLabel = PRIORITY_FILTER_OPTIONS.find(
++    option => option.value === selectedFilter,
++  )?.label;
++
++  const emptyMessage =
++    selectedFilter === 'all'
++      ? 'No tasks yet.'
++      : `No ${selectedLabel} priority tasks found.`;
+ 
+   return (
+     <View style={styles.container}>
+@@ -35,6 +53,11 @@ export default function TaskScreen() {
+         Tap a task to change its completion status.
+       </Text>
+ 
++      <PriorityFilter
++        selectedFilter={selectedFilter}
++        onSelectFilter={setSelectedFilter}
++      />
++
+       <FlatList
+         data={tasks}
+         keyExtractor={item => item.id}
+@@ -44,6 +67,11 @@ export default function TaskScreen() {
+             onToggle={() => toggleTaskCompletion(item.id)}
+           />
+         )}
++        ListEmptyComponent={
++          <Text testID="task-list-empty" style={styles.emptyState}>
++            {emptyMessage}
++          </Text>
++        }
+       />
+     </View>
+   );
+@@ -91,6 +119,11 @@ const styles = StyleSheet.create({
+     fontSize: 12,
+     color: '#64748B',
+   },
++  emptyState: {
++    marginTop: 32,
++    textAlign: 'center',
++    color: '#64748B',
++  },
+   status: {
+     fontSize: 12,
+     color: '#2563EB',
+diff --git a/src/features/tasks/presentation/viewmodels/TaskViewModel.ts b/src/features/tasks/presentation/viewmodels/TaskViewModel.ts
+index 2d7655f..b18189c 100644
+--- a/src/features/tasks/presentation/viewmodels/TaskViewModel.ts
++++ b/src/features/tasks/presentation/viewmodels/TaskViewModel.ts
+@@ -1,10 +1,21 @@
+-import { useState } from 'react';
++import { useMemo, useState } from 'react';
+ 
+ import { Task } from '../../domain/models/Task';
++import {
++  filterTasksByPriority,
++  TaskPriorityFilter,
++} from '../../domain/usecases/filterTasksByPriority';
+ import { initialTasks } from '../../data/repositories/initialTasks';
+ 
+ export function useTaskViewModel() {
+   const [tasks, setTasks] = useState<Task[]>(initialTasks);
++  const [selectedFilter, setSelectedFilter] =
++    useState<TaskPriorityFilter>('all');
++
++  const filteredTasks = useMemo(
++    () => filterTasksByPriority(tasks, selectedFilter),
++    [tasks, selectedFilter],
++  );
+ 
+   const toggleTaskCompletion = (taskId: string) => {
+     setTasks(currentTasks =>
+@@ -15,7 +26,9 @@ export function useTaskViewModel() {
+   };
+ 
+   return {
+-    tasks,
++    tasks: filteredTasks,
++    selectedFilter,
++    setSelectedFilter,
+     toggleTaskCompletion,
+   };
+ }

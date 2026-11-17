@@ -1,0 +1,155 @@
+diff --git a/src/features/tasks/presentation/screens/TaskScreen.tsx b/src/features/tasks/presentation/screens/TaskScreen.tsx
+index 6f04c72..b518eb7 100644
+--- a/src/features/tasks/presentation/screens/TaskScreen.tsx
++++ b/src/features/tasks/presentation/screens/TaskScreen.tsx
+@@ -2,11 +2,22 @@ import React from 'react';
+ import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+ 
+ import { Task } from '../../domain/models/Task';
+-import { useTaskViewModel } from '../viewmodels/TaskViewModel';
++import { taskFilters, useTaskViewModel } from '../viewmodels/TaskViewModel';
++
++const filterLabels = {
++  all: 'All',
++  high: 'High',
++  medium: 'Medium',
++  low: 'Low',
++};
+ 
+ function TaskItem({ task, onToggle }: { task: Task; onToggle: () => void }) {
+   return (
+-    <Pressable style={styles.task} onPress={onToggle}>
++    <Pressable
++      testID={`task-${task.id}`}
++      style={styles.task}
++      onPress={onToggle}
++    >
+       <View style={styles.taskInfo}>
+         <Text style={[styles.taskTitle, task.isCompleted && styles.completed]}>
+           {task.title}
+@@ -25,7 +36,8 @@ function TaskItem({ task, onToggle }: { task: Task; onToggle: () => void }) {
+ }
+ 
+ export default function TaskScreen() {
+-  const { tasks, toggleTaskCompletion } = useTaskViewModel();
++  const { tasks, selectedFilter, setSelectedFilter, toggleTaskCompletion } =
++    useTaskViewModel();
+ 
+   return (
+     <View style={styles.container}>
+@@ -35,9 +47,43 @@ export default function TaskScreen() {
+         Tap a task to change its completion status.
+       </Text>
+ 
++      <View style={styles.filters}>
++        {taskFilters.map(filter => {
++          const isSelected = filter === selectedFilter;
++          return (
++            <Pressable
++              key={filter}
++              testID={`filter-${filter}`}
++              accessibilityRole="button"
++              accessibilityState={{ selected: isSelected }}
++              style={[styles.filter, isSelected && styles.filterSelected]}
++              onPress={() => setSelectedFilter(filter)}
++            >
++              <Text
++                style={[
++                  styles.filterText,
++                  isSelected && styles.filterTextSelected,
++                ]}
++              >
++                {filterLabels[filter]}
++              </Text>
++            </Pressable>
++          );
++        })}
++      </View>
++
+       <FlatList
+         data={tasks}
+         keyExtractor={item => item.id}
++        ListEmptyComponent={
++          <Text testID="empty-state" style={styles.empty}>
++            {selectedFilter === 'all'
++              ? 'No tasks yet.'
++              : `No ${filterLabels[
++                  selectedFilter
++                ].toLowerCase()} priority tasks.`}
++          </Text>
++        }
+         renderItem={({ item }) => (
+           <TaskItem
+             task={item}
+@@ -65,6 +111,33 @@ const styles = StyleSheet.create({
+     marginBottom: 20,
+     color: '#64748B',
+   },
++  filters: {
++    flexDirection: 'row',
++    marginBottom: 16,
++  },
++  filter: {
++    paddingVertical: 8,
++    paddingHorizontal: 14,
++    marginRight: 8,
++    borderRadius: 16,
++    backgroundColor: '#E2E8F0',
++  },
++  filterSelected: {
++    backgroundColor: '#2563EB',
++  },
++  filterText: {
++    fontSize: 14,
++    fontWeight: '600',
++    color: '#334155',
++  },
++  filterTextSelected: {
++    color: '#FFFFFF',
++  },
++  empty: {
++    marginTop: 40,
++    textAlign: 'center',
++    color: '#64748B',
++  },
+   task: {
+     flexDirection: 'row',
+     justifyContent: 'space-between',
+diff --git a/src/features/tasks/presentation/viewmodels/TaskViewModel.ts b/src/features/tasks/presentation/viewmodels/TaskViewModel.ts
+index 2d7655f..3316575 100644
+--- a/src/features/tasks/presentation/viewmodels/TaskViewModel.ts
++++ b/src/features/tasks/presentation/viewmodels/TaskViewModel.ts
+@@ -1,10 +1,21 @@
+ import { useState } from 'react';
+ 
+-import { Task } from '../../domain/models/Task';
++import { Task, TaskPriority } from '../../domain/models/Task';
+ import { initialTasks } from '../../data/repositories/initialTasks';
+ 
++export type TaskFilter = 'all' | TaskPriority;
++
++export const taskFilters: TaskFilter[] = ['all', 'high', 'medium', 'low'];
++
++export function filterTasksByPriority(tasks: Task[], filter: TaskFilter) {
++  return filter === 'all'
++    ? tasks
++    : tasks.filter(task => task.priority === filter);
++}
++
+ export function useTaskViewModel() {
+   const [tasks, setTasks] = useState<Task[]>(initialTasks);
++  const [selectedFilter, setSelectedFilter] = useState<TaskFilter>('all');
+ 
+   const toggleTaskCompletion = (taskId: string) => {
+     setTasks(currentTasks =>
+@@ -15,7 +26,9 @@ export function useTaskViewModel() {
+   };
+ 
+   return {
+-    tasks,
++    tasks: filterTasksByPriority(tasks, selectedFilter),
++    selectedFilter,
++    setSelectedFilter,
+     toggleTaskCompletion,
+   };
+ }

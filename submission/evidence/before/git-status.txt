@@ -1,0 +1,5 @@
+ M src/features/tasks/presentation/screens/TaskScreen.tsx
+ M src/features/tasks/presentation/viewmodels/TaskViewModel.ts
+?? __tests__/TaskScreen.test.tsx
+?? __tests__/TaskScreenEmptyState.test.tsx
+?? __tests__/TaskViewModel.test.ts
